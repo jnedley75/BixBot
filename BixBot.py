@@ -12,7 +12,14 @@ from lxml import etree
 from xml.etree import ElementTree
 from dotenv import load_dotenv
 from pathlib import Path
-
+#------------------------------------------------------------------
+#                   ____     _             ____           __
+#                 / __ )   (_)   _  __   / __ )  ____   / /_
+#               / __  |  / /   | |/_/  / __  | / __ \ / __/
+#             / /_/ /  / /   _>  <   / /_/ / / /_/ // /_
+#           /_____/  /_/   /_/|_|  /_____/  \____/ \__/
+#
+#------------------------------------------------------------------
 load_dotenv(Path('discord.env'))
 BOT_TOKEN = os.getenv('TOKEN')
 
@@ -143,47 +150,36 @@ async def playNext(ctx, *args):
 
 @bot.command(name='removeSong', help='This command allows you to remove a song from the queue')
 async def removeSong(ctx):
-    count = 0
-    list = ""
-    for x in Queue:
-        if count == (len(Queue)):
-            break
-        youtube = etree.HTML(urllib.request.urlopen(x).read())
-        video_title = "".join(youtube.xpath('//meta[@name="title"]/@content'))
-        list = list + "".join("`" + str(count+1) + "` " + video_title + "\n")
-        count += 1
-
-    QueueList_embed=discord.Embed(title="Queue", description=list[0: int(len(list) - 2)], color=0x61b8f5);
-    QueueList_embed.set_footer(text="Type index number (1 - 10) to remove a song `(Type 'cancel' to quit)`");
-
-    async with ctx.typing():
-        await ctx.channel.send(embed=QueueList_embed);
-
-    validChoice = False
-    while validChoice == False:
-        choice = await bot.wait_for('message', check=lambda message: message.author == ctx.author)
-        try:
-            if (1 <= int(choice.content) <= 10):
-                validChoice = True
-            else:
-                await ctx.channel.send('I said 1-10, come on now...')
-        except:
-            if choice.content == "cancel":
-                validChoice = True
-            else:
-                await ctx.channel.send('You do know 1-10, are numbers right?')
-
-    if(choice.content == "cancel"):
-        await ctx.channel.send('Herrrrrrrd!')
-    else:
-        removeFromQueue(int(choice.content))
+    queue = showQueue()
+    if not queue:
         async with ctx.typing():
-            print(list)
-            print(list[int(choice.content)-1])
-            print(list[int(choice.content)-1][4: len(list[int(choice.content)-1])])
+            await ctx.channel.send("You've got nothing in the queue buddy. What're you doing");
+    else:
+        queue.set_footer(text="Type index number (1 - 10) to remove a song `(Type 'cancel' to quit)`");
+        async with ctx.typing():
+            await ctx.channel.send(embed=queue);
+        validChoice = False
+        while validChoice == False:
+            choice = await bot.wait_for('message', check=lambda message: message.author == ctx.author)
+            try:
+                if (1 <= int(choice.content) <= 10):
+                    validChoice = True
+                else:
+                    await ctx.channel.send('I said 1-10, come on now...')
+            except:
+                if choice.content == "cancel":
+                    validChoice = True
+                else:
+                    await ctx.channel.send('You do know 1-10, are numbers right?')
 
-            video_title = list[int(choice.content)-1][4: len(list[int(choice.content)-1])]
-            await ctx.channel.send(video_title + " has been removed from the queue")
+        if(choice.content == "cancel"):
+            await ctx.channel.send('Herrrrrrrd!')
+        else:
+            removeFromQueue(int(choice.content))
+            async with ctx.typing():
+                songToRemove = songs.split("\n")[int(choice.content)-1]
+                songToRemove = songToRemove[songToRemove.index("`", 1, 4)+1:]
+                await ctx.channel.send("**" + songToRemove + "** has been removed from the queue")
 
 
 def addToQueue(url):
@@ -195,7 +191,36 @@ def addToQueue(url):
                 Queue.append(url);
 
 def removeFromQueue(index):
-    print(index)
+    Queue.pop(index-1)
+
+@bot.command(name='showQueue', help='This command will display the queue')
+async def showQueue(ctx):
+    queue = showQueueLogic()
+    if not queue:
+        async with ctx.typing():
+            await ctx.channel.send("You've got nothing in the queue buddy. What're you doing");
+    else:
+        async with ctx.typing():
+            await ctx.channel.send("You've got nothing in the queue buddy. What're you doing");
+
+def showQueueLogic():
+    if not Queue:
+        return False;
+    count = 0
+    songs = ""
+    for x in Queue:
+        if count == (len(Queue)):
+            break
+        youtube = etree.HTML(urllib.request.urlopen(x).read())
+        video_title = "".join(youtube.xpath('//meta[@name="title"]/@content'))
+        songs = songs + "`" + str(count+1) + "` " + video_title + "\n"
+        count += 1
+
+    QueueList_embed=discord.Embed(title="Queue", description=songs, color=0x61b8f5);
+
+    return QueueList_embed
+
+
 
 
 @bot.command(name='search', help='This command searches for a song')
